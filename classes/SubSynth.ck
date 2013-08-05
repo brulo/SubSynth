@@ -36,7 +36,7 @@ public class SubSynth{
     LPF lp; //filter 0 
     HPF hp; //1
     ResonZ rez; //2
-    KasFilter kf;
+    //KasFilter kf;
     OscRecv orec;
     
     //------------Initializer--------------------------------
@@ -55,9 +55,9 @@ public class SubSynth{
         preWsBus => sinWs => wsBus;   preWsBus => triWs => wsBus;
         sqrWs => wsBus; sawWs => wsBus; 
         sinWs => wsBus; triWs => wsBus; 
-        wsBus => lp; wsBus => hp; wsBus => rez; wsBus => kf;
-        dryBus => lp; dryBus => hp; dryBus => rez; dryBus => kf;
-        lp => mstBus; hp => mstBus; rez => mstBus; kf => mstBus;
+        wsBus => lp; wsBus => hp; wsBus => rez; //wsBus => kf;
+        dryBus => lp; dryBus => hp; dryBus => rez; //dryBus => kf;
+        lp => mstBus; hp => mstBus; rez => mstBus; //kf => mstBus;
         filtEnv => blackhole;
         mstBus => dac;
         
@@ -82,8 +82,8 @@ public class SubSynth{
         spork ~ mstGainOSC();
         spork ~ oscMixOSC();
         spork ~ waveSelOSC();
-        spork ~ waveShapeSelOSC(); spork ~ waveShapeMixOSC();
-        spork ~ coarseOSC(); spork ~ fineOSC(); spork ~ octOSC();
+        spork ~ waveShapeSelOSC(); spork ~ waveShapeMixOSC(); //waveshaping
+        spork ~ coarseOSC(); spork ~ fineOSC(); spork ~ octOSC(); //tuning
         spork ~ portoLoop(); spork ~ portoOSC(); //porto
         spork ~ ampAtkOSC(); spork ~ ampDecOSC(); //amp env
         spork ~ filtSelOSC(); spork ~ filtCutOSC();  spork ~qOSC(); //filter
@@ -91,7 +91,7 @@ public class SubSynth{
         spork ~ filtEnvLoop(); 
         spork ~ keyboTrackOSC();
         spork ~ harmOSC();
-        spork ~ noiGainOSC(); spork ~ noiAtkOSC(); spork ~ noiDecOSC();
+        spork ~ noiGainOSC(); spork ~ noiAtkOSC(); spork ~ noiDecOSC(); //noise
     }
     
     //----------------------------FUNCTIONS-------------------------
@@ -116,27 +116,27 @@ public class SubSynth{
             lp  => mstBus;
             hp  =< mstBus;
             rez =< mstBus;
-            kf  =< mstBus;
+            //kf  =< mstBus;
             
         }
         else if(fs==1){ //selects hp
             lp  =< mstBus;
             hp  => mstBus;
             rez =< mstBus;
-            kf  =< mstBus;
+            //kf  =< mstBus;
         }
         else if(fs==2){ //selects rez
             lp  =< mstBus;
             hp  =< mstBus;
             rez => mstBus;
-            kf  =< mstBus; 
-        }
+            //kf  =< mstBus; 
+        } /*
         else if(fs==3){ //selects kf
             lp  =< mstBus;
             hp  =< mstBus;
             rez =< mstBus;
             kf  => mstBus; 
-        }
+        } */
     }
     
     fun void waveSel(int os, int wv){
@@ -248,7 +248,7 @@ public class SubSynth{
         while(ev=>now){
             while(ev.nextMsg() != 0){
                 ev.getFloat() => q;
-                q => kf.resonance;
+                //q => kf.resonance;
                 q*11 + 1 => q;
                 q => rez.Q => lp.Q => hp.Q;
             }
@@ -261,7 +261,7 @@ public class SubSynth{
         while(ev=>now){
             while(ev.nextMsg() != 0){
                 Math.pow(ev.getFloat(), 2) * 19980 + 20 => cut;
-                cut => rez.freq => lp.freq => hp.freq => kf.freq;
+                cut => rez.freq => lp.freq => hp.freq; //=> kf.freq;
             }
         }
     }
@@ -373,7 +373,7 @@ public class SubSynth{
             }
         }
     } 
-       
+    
     fun void octOSC(){
         orec.event("/oct, i, f") @=> OscEvent ev;
         while(ev=>now){
@@ -413,7 +413,7 @@ public class SubSynth{
         while(samp => now){
             Std.mtof(filtEnv.value() * filtEnvAmt * 127 + Std.ftom(cut)+(track*cPitch)) => f;
             if(f>20000)20000=>f;
-            f => rez.freq => lp.freq => hp.freq => kf.freq;
+            f => rez.freq => lp.freq => hp.freq; // => kf.freq;
         }
     }
     
