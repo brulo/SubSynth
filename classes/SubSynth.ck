@@ -1,218 +1,473 @@
-//2 oscillators (coarse/fine tuning)
-//Mixer 
-//2 waveforms
+//2 oscillators (oct/semitone/cent tuning)
+//Oscillator Mixer 
+//4 waveforms (sqr/saw bandlimited w/ adj harmonics)
 //Portomento
 //One filter (selectable LP, HP, Rez)
 //Keyboard tracking
 //AD for filter
 //AD for amplitude
 //OSC addressable (listens on port 12001)
-
-//Uses pitch and gate dataEvents to trigger notes
+//all synth parameter functions take 0.0-1.0
+//Uses pitch and trig dataEvents to trigger notes
+//
+//By Bruce Lott & Mark Morris
+//July/August 2013
 
 public class SubSynth{
+    //----------------Ugens----------------\\
+    //Oscillators
+    BlitSquare sqr[2]; BlitSaw saw[2];
+    SinOsc sin[2];     TriOsc tri[2];
+    Noise noi;
+    //Waveshapers
+    Osc ws[4];
+    SqrOsc sqrWs @=> ws[0];  SawOsc sawWs @=> ws[1];
+    SinOsc sinWs @=> ws[2];  TriOsc triWs @=> ws[3];
+    //Busses
+    Gain mix[2];
+    Gain preWs, paraWs, postWs, preFilt, postFilt;
+    Pan2 mstBus;
+    //Envelopes
+    ADSR ampEnv, filtEnv, noiEnv;
+    //Filters
+    FilterBasic filts[3];
+    LPF lp @=> filts[0];  
+    HPF hp @=> filts[1];  
+    ResonZ rez @=> filts[2];
+    //KasFilter kf; //3
+    
     //Objects
     DLP porto[2];
-    //Ugens
-    BlitSquare sqr[2]; //waveform 0
-    BlitSaw saw[2];    //1
-    SinOsc sin[2];     //2
-    TriOsc tri[2];     //3
-    Noise noi;
-    SqrOsc sqrWs; //waveshaper 0
-    SawOsc sawWs; //1
-    SinOsc sinWs; //2
-    TriOsc triWs; //3
-    Gain mix[2];
-    Gain wsBus, dryBus, preWsBus;
-    Pan2 mstBus;
-    ADSR ampEnv, filtEnv, noiEnv;
-    int cFilt, cShaper;
-    int cWave[2];
-    float coarse[2]; float fine[2]; float oct[2];
-    //float fine[2];
-    float cPitch; float tPitch[2]; //temp
-    float q, cut, track, filtEnvAmt;
-    LPF lp; //filter 0 
-    HPF hp; //1
-    ResonZ rez; //2
-    //KasFilter kf;
+    
+    //Variables
+    int cFilt, cWShaper;
+    int cWForm[2]; 
+    float cPitch, reso, cut, track, fEnvAmt, portoAmt, oMix, wsMix;
+    int oct[2]; int coarse[2]; float fine[2]; 
     OscRecv orec;
     
-    //------------Initializer--------------------------------
+    //--------------------------------Initializer--------------------------------\\
     fun void init(){
         //Signal Routing
         for(int i; i<2; i++){
-            sqr[i] => mix[i];   saw[i] => mix[i]; //oscs to mixers
+            sqr[i] => mix[i];   saw[i] => mix[i];  //waveforms to mixer
             sin[i] => mix[i];   tri[i] => mix[i];
-            mix[i] => ampEnv;                   //mixers to amp env
+            
+            mix[i] => paraWs;    mix[i] => preWs;  //mixer to waveshaper busses
         }
-        noi => noiEnv;
-        ampEnv => dryBus;    noiEnv => dryBus;
-        ampEnv => preWsBus;  noiEnv => preWsBus;
-        ampEnv => preWsBus;  noiEnv => preWsBus; 
-        preWsBus => sqrWs => wsBus;   preWsBus => sawWs => wsBus; //envBus to waveshapers  
-        preWsBus => sinWs => wsBus;   preWsBus => triWs => wsBus;
-        sqrWs => wsBus; sawWs => wsBus; 
-        sinWs => wsBus; triWs => wsBus; 
-        wsBus => lp; wsBus => hp; wsBus => rez; //wsBus => kf;
-        dryBus => lp; dryBus => hp; dryBus => rez; //dryBus => kf;
-        lp => mstBus; hp => mstBus; rez => mstBus; //kf => mstBus;
+        
+        for(int i; i<ws.cap(); i++) preWs => ws[i]; 
+                                                   //shapers to postWs handled by waveshape()
+        postWs => ampEnv; paraWs => ampEnv;
+        
+        ampEnv => preFilt;    
+        noi => noiEnv => preFilt; //noise skips ampEnv (has its own)
+        
+        for(int i; i<filts.cap(); i++){
+            preFilt => filts[i];    
+        }                        //filts to postfil handled by filerType()
+        
+        postFilt => mstBus => dac;
+        
         filtEnv => blackhole;
-        mstBus => dac;
         
         //Defaults
         for(int i; i<2 ; i++){ 
-            waveSel(i,0);
-            porto[i].go(); //.init
+            waveform(i,0);
+            porto[i].go(); //.init?
             200 => porto[i].freq;
         }
-        ampEnv.set (20::ms,200::ms,0,0::ms);
-        filtEnv.set(20::ms,200::ms,0,0::ms);
-        noiEnv.set(20::ms,200::ms,0,0::ms);
+        for(int i; i<ws.cap(); i++) ws[i].sync(1);
+        ampEnv.set  (20::ms,200::ms,0,0::ms);
+        filtEnv.set (20::ms,200::ms,0,0::ms);
+        noiEnv.set  (20::ms,200::ms,0,0::ms);
+        waveshaper(0);
+        filtType(0);
         noi.gain(0);
-        filtSel(0);
-        sqrWs.sync(1);  sawWs.sync(1); 
-        sinWs.sync(1);  triWs.sync(1); 
-        waveShapeSel(0);
+        waveshaperMix(0);
+        oscMix(0);
+        cutoff(1);
         
+        //------------------------------Sporks------------------------------\\
         //OSC
         12001 => orec.port;
         orec.listen();
-        spork ~ mstGainOSC();
+        spork ~ waveformOSC();
         spork ~ oscMixOSC();
-        spork ~ waveSelOSC();
-        spork ~ waveShapeSelOSC(); spork ~ waveShapeMixOSC(); //waveshaping
-        spork ~ coarseOSC(); spork ~ fineOSC(); spork ~ octOSC(); //tuning
-        spork ~ portoLoop(); spork ~ portoOSC(); //porto
-        spork ~ ampAtkOSC(); spork ~ ampDecOSC(); //amp env
-        spork ~ filtSelOSC(); spork ~ filtCutOSC();  spork ~qOSC(); //filter
-        spork ~ filtEnvAmtOSC(); spork ~ filtAtkOSC(); spork ~ filtDecOSC(); //filter env
-        spork ~ filtEnvLoop(); 
+        spork ~ coarseTuneOSC(); spork ~ fineTuneOSC(); spork ~ octaveTuneOSC(); //tuning
+        spork ~ harmonicsOSC();
+        spork ~ waveshaperOSC(); spork ~ waveshaperMixOSC(); //waveshaping
+        spork ~ ampAtkOSC();     spork ~ ampDecOSC(); //amp env
+        spork ~ noiGainOSC();    spork ~ noiAtkOSC();   spork ~ noiDecOSC(); //noise
+        spork ~ filtTypeOSC();   spork ~ cutoffOSC();  spork ~resonanceOSC(); //filter
+        spork ~ filtEnvAmtOSC(); spork ~ filtAtkOSC();  spork ~ filtDecOSC(); //filter env
         spork ~ keyboTrackOSC();
-        spork ~ harmOSC();
-        spork ~ noiGainOSC(); spork ~ noiAtkOSC(); spork ~ noiDecOSC(); //noise
+        spork ~ portomentoOSC();
+        spork ~ mstGainOSC();            
+        
+        //Other
+        spork ~ filtEnvLoop(); 
+        spork ~ portoLoop();
     }
     
     //----------------------------FUNCTIONS-------------------------
-    
-    fun void waveShapeSel(int ws){
-        sqrWs =< wsBus; sawWs =< wsBus; 
-        sinWs =< wsBus; triWs =< wsBus;
-        if(ws==0) sqrWs => wsBus;
-        else if(ws==1) sawWs => wsBus;
-        else if(ws==2) sinWs => wsBus;
-        else if(ws==3) triWs => wsBus;
-    }
-    
-    fun void harmonics(int os, int h){
-        h => sqr[os].harmonics => saw[os].harmonics;
-    }
-    
-    fun int filtSel() { return cFilt; }
-    fun int filtSel(int fs){
-        fs => cFilt;
-        if(fs==0){ //selects lp
-            lp  => mstBus;
-            hp  =< mstBus;
-            rez =< mstBus;
-            //kf  =< mstBus;
-            
-        }
-        else if(fs==1){ //selects hp
-            lp  =< mstBus;
-            hp  => mstBus;
-            rez =< mstBus;
-            //kf  =< mstBus;
-        }
-        else if(fs==2){ //selects rez
-            lp  =< mstBus;
-            hp  =< mstBus;
-            rez => mstBus;
-            //kf  =< mstBus; 
-        } /*
-        else if(fs==3){ //selects kf
-            lp  =< mstBus;
-            hp  =< mstBus;
-            rez =< mstBus;
-            kf  => mstBus; 
-        } */
-    }
-    
-    fun void waveSel(int os, int wv){
-        sqr[os] =< mix[os];
-        saw[os] =< mix[os];
-        sin[os] =< mix[os];
-        tri[os] =< mix[os];
+    //Setters and Getters       
+    //Oscillators
+    fun int waveform(int os) { return cWForm[os]; }
+    fun int waveform(int os, int wv){
+        sqr[os] =< mix[os];   saw[os] =< mix[os];
+        sin[os] =< mix[os];   tri[os] =< mix[os];
         if(wv==0) sqr[os] => mix[os];
         else if(wv==1) saw[os] => mix[os];
         else if(wv==2) sin[os] => mix[os];
         else if(wv==3) tri[os] => mix[os];
-        wv => cWave[os];
+        wv => cWForm[os];
+        return cWForm[os];
     }
     
-    fun void pitchIt(float p){
-        p => cPitch;
-        for(int i; i<2; i++){
-            cPitch + coarse[i] + fine[i] + (oct[i]*12) => tPitch[i];
-            Std.mtof(tPitch[i]) => porto[i].data;
+    fun float oscMix(){ return oMix; }
+    fun float oscMix(float m){
+        sanityCheck(m) => oMix;
+        crossfade(mix[0], mix[1], oMix);
+        return oMix;
+    }      
+    
+    fun int coarseTune(int os){ return coarse[os]; }
+    fun int coarseTune(int os, float c){
+        (sanityCheck(c)*24 - 12) $ int => coarse[os]; //convert to semitones
+        pitchIt(cPitch);
+        return coarse[os];
+    }
+    
+    fun float fineTune(int os){ return fine[os]; }
+    fun float fineTune(int os, float f){
+        sanityCheck(f) - 0.5 => fine[os]; //convert to cents
+        pitchIt(cPitch);
+        return fine[os];
+    }
+    
+    fun int octaveTune(int os){ return oct[os]; }
+    fun int octaveTune(int os, float o){
+        (sanityCheck(o)*10 - 5) $ int => oct[os];  //convert to # octaves
+        pitchIt(cPitch);
+        return oct[os];
+    }
+    
+    fun int harmonics(int os) { return sqr[os].harmonics(); }
+    fun int harmonics(int os, float h){
+        if(os>=0 & os<2){
+            (sanityCheck(h)*100) $ int => sqr[os].harmonics => saw[os].harmonics;
+        }
+        return sqr[os].harmonics();
+    }
+    
+    //Waveshaper
+    fun int waveshaper() { return cWShaper; }
+    fun int waveshaper(int s){
+        if(s>=0 & s<ws.cap()){
+            for(int i; i<ws.cap(); i++) ws[i] =< postWs;
+            ws[s] => postWs;
+            s => cWShaper;
+        }
+        return cWShaper;
+    }    
+    
+    fun float waveshaperMix() { return wsMix; }
+    fun float waveshaperMix(float m){
+        sanityCheck(m) => wsMix;
+        crossfade(paraWs, postWs, wsMix);
+        return wsMix;
+    }
+    
+    //Amplitude Envelope
+    fun dur ampAtk() { return ampEnv.attackTime(); }    
+    fun dur ampAtk(float a){
+        calcEnvTime(sanityCheck(a)) => ampEnv.attackTime;
+        return ampEnv.attackTime();
+    }
+    
+    fun dur ampDec() { return ampEnv.decayTime(); }
+    fun dur ampDec(float d){
+        calcEnvTime(sanityCheck(d)) => ampEnv.decayTime;
+        return ampEnv.decayTime();
+    }    
+    
+    //Noise Section
+    fun float noiGain() { return noi.gain(); }
+    fun float noiGain(float g){
+        sanityCheck(g)*0.5 => noi.gain;
+    }    
+    
+    fun dur noiAtk() { return noiEnv.attackTime(); }    
+    fun dur noiAtk(float a){
+        calcEnvTime(sanityCheck(a)) => noiEnv.attackTime;
+        return noiEnv.attackTime();
+    }
+    
+    fun dur noiDec() { return noiEnv.decayTime(); }
+    fun dur noiDec(float d){
+        calcEnvTime(sanityCheck(d)) => noiEnv.decayTime;
+        return noiEnv.decayTime();
+    }
+    
+    //Filter    
+    fun int filtType() { return cFilt; }
+    fun int filtType(int fs){
+        if(fs>=0 & fs<filts.cap()){
+            for(int i; i<filts.cap(); i++) filts[i] =< postFilt;
+            filts[fs] => postFilt;
+            fs => cFilt;
+        }
+        return cFilt;
+    }
+    
+    fun float cutoff(){ return cut; }
+    fun float cutoff(float c){
+        Math.pow(sanityCheck(c),2)*19980 + 20 => cut;
+        return cut;
+    }
+    
+    fun float resonance(){ return reso; }
+    fun float resonance(float r){
+        sanityCheck(r)*11 + 1 => r;
+        for(int i; i<filts.cap(); i++){
+            r => filts[i].Q;
         }
     }
     
-    fun void coarseUpdate(int os, float c){
-        c=> coarse[os];
-        pitchIt(cPitch);
+    fun float filtEnvAmt() { return fEnvAmt; }
+    fun float filtEnvAmt(float a) {
+        sanityCheck(a) => fEnvAmt;
+        return fEnvAmt;
     }
     
-    fun void fineUpdate(int os, float f){
-        f => fine[os];
-        pitchIt(cPitch);
+    fun dur filtAtk() { return filtEnv.attackTime(); }    
+    fun dur filtAtk(float a){
+        calcEnvTime(sanityCheck(a)) => filtEnv.attackTime;
+        return filtEnv.attackTime();
     }
     
-    fun void octUpdate(int os, float f){
-        f => oct[os];
-        pitchIt(cPitch);
+    fun dur filtDec() { return filtEnv.decayTime(); }
+    fun dur filtDec(float d){
+        calcEnvTime(sanityCheck(d)) => filtEnv.decayTime;
+        return filtEnv.decayTime();
+    }
+    fun float keyboTrack() { return track; }
+    fun float keyboTrack(float k){
+        sanityCheck(k) => track;
+        return track;
     }
     
-    fun void gateIt(){
+    //End Stage
+    fun float portomento(){ return portoAmt; }
+    fun float portomento(float p){
+        sanityCheck(p) => portoAmt;
+        Math.pow(1 - portoAmt, 2) * 150 + 1 => p;
+        for(int i; i<2; i++) p => porto[i].freq;
+        return portoAmt;
+    }
+    
+    fun float mstGain() { return mstBus.gain(); }
+    fun float mstGain(float g){
+        if(g<0) 0 => mstBus.gain;
+        else if(g>1) 1 => mstBus.gain;
+        else g => mstBus.gain;
+    }  
+    
+    //Synth Triggers
+    fun void pitchIt(float p){
+        p => cPitch;
+        for(int i; i<2; i++){
+            Std.mtof(cPitch + coarse[i] + fine[i] + oct[i]*12) => porto[i].data;
+        }
+    }
+    
+    fun void trigIt(){
         filtEnv.keyOff();
         ampEnv.keyOff();
         noiEnv.keyOff();
+        
         ampEnv.keyOn();
         filtEnv.keyOn();
         noiEnv.keyOn();
         //<<<cPitch>>>;
     }
     
-    //------------------------------OSC loops-------------------------------- 
-    //Waveshape
-    fun void waveShapeSelOSC(){
-        orec.event("/wssel, i") @=> OscEvent ev;
+    //Utility Functions
+    fun void crossfade(UGen one, UGen two, float m){
+        sanityCheck(m) => m;
+        Math.cos(m*pi)*0.5 + 0.5 => one.gain;
+        Math.cos((m+1)*pi)*0.5 + 0.5 => two.gain;
+    }
+    
+    fun dur calcEnvTime(float l){
+        return Math.pow(l,2)*749::ms + 1::ms;
+    }
+    
+    
+    fun float sanityCheck(float f){
+        if(f<0) return 0.0;
+        else if(f>1) return 1.0;
+        else return f;
+    }
+    
+    //------------------------------OSC Loops--------------------------------\\
+    //Oscillators    
+    fun void waveformOSC(){
+        orec.event("/wf, i, i") @=> OscEvent ev;
         while(ev=>now){
             while(ev.nextMsg() != 0){
-                waveShapeSel(ev.getInt());
-            }
-        }
-    }
-    fun void waveShapeMixOSC(){
-        orec.event("/wsmix, f") @=> OscEvent ev;
-        float f;
-        while(ev=>now){ 
-            while(ev.nextMsg() != 0){
-                ev.getFloat() => f;
-                Math.cos(f*pi)*0.5+0.5 => dryBus.gain; //PUT THIS IN A oscMix function
-                Math.cos((f+1)*pi)*0.5+0.5 => preWsBus.gain;
+                waveform(ev.getInt(), ev.getInt());
             }
         }
     }
     
-    //Filter
+    fun void oscMixOSC(){
+        orec.event("/omix, f") @=> OscEvent ev;
+        while(ev=>now){ 
+            while(ev.nextMsg() != 0){
+                oscMix(ev.getFloat());
+            }
+        }
+    }
+    
+    fun void coarseTuneOSC(){ //i = osc, f = coarse pitch
+        orec.event("/cors, i, f") @=> OscEvent ev;
+        int i;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                coarseTune(ev.getInt(), ev.getFloat());
+            }
+        }
+    }
+    
+    fun void fineTuneOSC(){ //i = osc, f = coarse pitch
+        orec.event("/fine, i, f") @=> OscEvent ev;
+        int i;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                fineTune(ev.getInt(), ev.getFloat());
+            }
+        }
+    } 
+    
+    fun void octaveTuneOSC(){ //i = osc, f = coarse pitch
+        orec.event("/oct, i, f") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                octaveTune(ev.getInt(), ev.getFloat());
+            }
+        }
+    }
+    
+    fun void harmonicsOSC(){
+        orec.event("/harm, i, f") @=> OscEvent ev;  
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                harmonics(ev.getInt(), ev.getFloat());
+            }
+        }
+    }
+    
+    //Waveshaper
+    fun void waveshaperOSC(){
+        orec.event("/wssel, i") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                waveshaper(ev.getInt());
+            }
+        }
+    }
+    
+    fun void waveshaperMixOSC(){
+        orec.event("/wsmix, f") @=> OscEvent ev;
+        while(ev=>now){ 
+            while(ev.nextMsg() != 0){
+                waveshaperMix(ev.getFloat());
+            }
+        }
+    }
+    
+    //Amplitude Envelope
+    fun void ampAtkOSC(){
+        orec.event("/aatk, f") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                ampAtk(ev.getFloat());
+            }
+        }
+    }
+    
+    fun void ampDecOSC(){
+        orec.event("/adec, f") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                ampDec(ev.getFloat());
+            }
+        }
+    }
+    
+    //Noise Stage
+    fun void noiGainOSC(){
+        orec.event("/ngain, f") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                noiGain(ev.getFloat());
+            }
+        }
+    }
+    
+    fun void noiAtkOSC(){
+        orec.event("/natk, f") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                noiAtk(ev.getFloat());
+            }
+        }
+    }
+    
+    fun void noiDecOSC(){
+        orec.event("/ndec, f") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                noiDec(ev.getFloat());
+            }
+        }
+    }
+    
+    //Filter    
+    fun void filtTypeOSC(){
+        orec.event("/fsel, i") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                filtType(ev.getInt());
+            }
+        }
+    }
+    
+    fun void cutoffOSC(){
+        orec.event("/cut, f") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                cutoff(ev.getFloat());
+            }
+        }
+    }
+    
+    fun void resonanceOSC(){
+        orec.event("/q, f") @=> OscEvent ev;
+        while(ev=>now){
+            while(ev.nextMsg() != 0){
+                resonance(ev.getFloat());
+            }
+        }
+    }
+    
     fun void filtEnvAmtOSC(){
         orec.event("/feamt, f") @=> OscEvent ev;
         while(ev=>now){
             while(ev.nextMsg() != 0){
-                <<<"filt env amt">>>;
-                ev.getFloat() => filtEnvAmt;
+                filtEnvAmt(ev.getFloat());
             }
         }
     }    
@@ -221,7 +476,7 @@ public class SubSynth{
         orec.event("/fatk, f") @=> OscEvent ev;
         while(ev=>now){
             while(ev.nextMsg() != 0){
-                Math.pow(ev.getFloat(),2) * 749::ms+ 1::ms => filtEnv.attackTime;
+                filtAtk(ev.getFloat());
             }
         }
     }
@@ -230,10 +485,11 @@ public class SubSynth{
         orec.event("/fdec, f") @=> OscEvent ev;
         while(ev=>now){
             while(ev.nextMsg() != 0){
-                Math.pow(ev.getFloat(), 2) * 749::ms + 1::ms => filtEnv.decayTime;
+                filtDec(ev.getFloat());
             }
         }
     }
+    
     fun void keyboTrackOSC(){
         orec.event("/trk, f") @=> OscEvent ev;
         while(ev=>now){
@@ -243,166 +499,22 @@ public class SubSynth{
         }
     } 
     
-    fun void qOSC(){
-        orec.event("/q, f") @=> OscEvent ev;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                ev.getFloat() => q;
-                //q => kf.resonance;
-                q*11 + 1 => q;
-                q => rez.Q => lp.Q => hp.Q;
-            }
-        }
-    }
-    
-    fun void filtCutOSC(){
-        orec.event("/cut, f") @=> OscEvent ev;
-        float f;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                Math.pow(ev.getFloat(), 2) * 19980 + 20 => cut;
-                cut => rez.freq => lp.freq => hp.freq; //=> kf.freq;
-            }
-        }
-    }
-    
-    //Amplitude
-    fun void mstGainOSC(){
-        orec.event("/mgain, f") @=> OscEvent ev;
-        while(ev=>now){ 
-            while(ev.nextMsg() != 0){
-                ev.getFloat() => mstBus.gain;
-            }
-        }
-    }
-    
-    fun void oscMixOSC(){
-        orec.event("/omix, f") @=> OscEvent ev;
-        float f;
-        while(ev=>now){ 
-            while(ev.nextMsg() != 0){
-                ev.getFloat() => f;
-                Math.cos((f)*pi)*0.5+0.5 => mix[0].gain; //PUT THIS IN A oscMix function
-                Math.cos((f+1)*pi)*0.5+0.5 => mix[1].gain;
-            }
-        }
-    }
-    
-    fun void ampAtkOSC(){
-        orec.event("/aatk, f") @=> OscEvent ev;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                Math.pow(ev.getFloat(),2) * 749::ms+ 1::ms => ampEnv.attackTime;
-            }
-        }
-    }
-    
-    fun void ampDecOSC(){
-        orec.event("/adec, f") @=> OscEvent ev;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                Math.pow(ev.getFloat(), 2) * 749::ms + 1::ms => ampEnv.decayTime;
-            }
-        }
-    }
-    //Noise
-    fun void noiGainOSC(){
-        orec.event("/ngain, f") @=> OscEvent ev;
-        float f;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                ev.getFloat() => f;
-                if(f>=0 | f<=1) f * 0.5 => noi.gain;
-            }
-        }
-    }
-    
-    fun void noiAtkOSC(){
-        orec.event("/natk, f") @=> OscEvent ev;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                Math.pow(ev.getFloat(), 2) * 749::ms + 1::ms => noiEnv.attackTime;
-            }
-        }
-    }
-    
-    fun void noiDecOSC(){
-        orec.event("/ndec, f") @=> OscEvent ev;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                Math.pow(ev.getFloat(), 2) * 749::ms + 1::ms => noiEnv.decayTime;
-            }
-        }
-    }
-    
-    //Selectors
-    fun void filtSelOSC(){
-        orec.event("/fsel, i") @=> OscEvent ev;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                filtSel(ev.getInt());
-            }
-        }
-    }
-    
-    fun void waveSelOSC(){
-        orec.event("/wf, i, i") @=> OscEvent ev;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                waveSel(ev.getInt(), ev.getInt());
-            }
-        }
-    }
-    //Tuning
-    fun void coarseOSC(){ //i = osc, f = coarse pitch
-        orec.event("/cors, i, f") @=> OscEvent ev;
-        int i;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                coarseUpdate(ev.getInt(), ev.getFloat());
-            }
-        }
-    }
-    
-    fun void fineOSC(){
-        orec.event("/fine, i, f") @=> OscEvent ev;
-        int i;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                fineUpdate(ev.getInt(), ev.getFloat());
-            }
-        }
-    } 
-    
-    fun void octOSC(){
-        orec.event("/oct, i, f") @=> OscEvent ev;
-        while(ev=>now){
-            while(ev.nextMsg() != 0){
-                octUpdate(ev.getInt(), ev.getFloat());
-            }
-        }
-    }
-    
-    fun void portoOSC(){
+    //End Stage
+    fun void portomentoOSC(){
         orec.event("/porto, f") @=> OscEvent ev;
         float f;
         while(ev=>now){
             while(ev.nextMsg() != 0){
-                Math.pow(1 - ev.getFloat(), 2) * 150 + 1 => f;
-                for(int i; i<2; i++) f => porto[i].freq;
+                portomento(ev.getFloat());
             }
         }
     }
     
-    fun void harmOSC(){
-        orec.event("/harm, i, i") @=> OscEvent ev;  
-        int wf, h, l;
-        while(ev=>now){
+    fun void mstGainOSC(){
+        orec.event("/mgain, f") @=> OscEvent ev;
+        while(ev=>now){ 
             while(ev.nextMsg() != 0){
-                ev.getInt() => wf;
-                ev.getInt() => h;
-                if(h != l) harmonics(wf,h);
-                h => l;
+                mstGain(ev.getFloat());
             }
         }
     }
@@ -411,9 +523,9 @@ public class SubSynth{
     fun void filtEnvLoop(){
         float f;
         while(samp => now){
-            Std.mtof(filtEnv.value() * filtEnvAmt * 127 + Std.ftom(cut)+(track*cPitch)) => f;
-            if(f>20000)20000=>f;
-            f => rez.freq => lp.freq => hp.freq; // => kf.freq;
+            Std.mtof(filtEnv.value() * (fEnvAmt*100) + Std.ftom(cut)+(track*cPitch)) => f;
+            if(f>20000) 20000=>f;
+            for(int i; i<filts.cap(); i++) f => filts[i].freq;
         }
     }
     
