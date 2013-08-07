@@ -15,5 +15,5 @@ fun void pitchLoop(){
 }
 
 fun void gateLoop(){
-    while(trig.gate => now) syn.gateIt();
+    while(trig.gate => now) syn.trigIt();
 }
