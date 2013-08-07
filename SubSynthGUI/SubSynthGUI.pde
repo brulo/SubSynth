@@ -10,7 +10,9 @@
   DropdownList wf0, wf1; //waveform selector
   DropdownList fs; //filter selector
   DropdownList ws; //wave shape sel
-  Textlabel ae, ng; //amp env label
+              // 0,  1,  2,   3,  
+  int[] col = { 10, 40, 70, 100, 150, 200, 230, 280, 310, 340, 370, 420, 455  };
+  int[] row = { 10, 45, 50, 109, 170, 200 };
   
   void setup(){
     size(600,350);
@@ -20,58 +22,50 @@
     //OSCILLATOR MIXER
     cP5.addSlider("osc_mix")
     .setRange(0,1)
-    .setValue(0)
     .setSize(110,20)
-    .setPosition(10,10)
+    .setPosition(col[0],row[0])
     .setSliderMode(0)
+    .setValue(0)
     ;
     //FINE TUNING 1
     cP5.addSlider("fine_1")
     .setCaptionLabel("fine") 
     .setRange(0,1)
-    .setValue(.5)
     .setSize(20,100)
-    .setPosition(100, 50)
+    .setPosition(col[3], row[2])
     .setSliderMode(0)
     .setHandleSize(5)
+    .setValue(.5)
     ;
     //COURSE TUNING 1
     cP5.addSlider("course_1")
     .setCaptionLabel("cors") 
     .setRange(0,1)
-    .setValue(.5)
     .setSize(20,100)
-    .setPosition(70, 50)
+    .setPosition(col[2], row[2])
     .setSliderMode(0)
-    .setNumberOfTickMarks(25)
-    .showTickMarks(false)
     .setHandleSize(5)
-    .setDecimalPrecision(0)
-    .setValue(1); //sets val to 0?
+    .setValue(.5)
     ;
     //FINE TUNING 0
     cP5.addSlider("fine_0")
     .setCaptionLabel("fine") 
     .setRange(0,1)
-    .setValue(.5)
     .setSize(20,100)
-    .setPosition(40, 50)
+    .setPosition(col[1], row[2])
     .setSliderMode(0)
     .setHandleSize(5)
+    .setValue(.5)
     ;
     //COURSE TUNING 0
     cP5.addSlider("course_0")
     .setCaptionLabel("cors") 
     .setRange(0,1)
-    .setValue(.5)
     .setSize(20,100)
-    .setPosition(10, 50)
+    .setPosition(col[0], row[2])
     .setSliderMode(0)
-    .setNumberOfTickMarks(25)
-    .showTickMarks(false)
     .setHandleSize(5)
-    .setDecimalPrecision(0)
-    .setValue(1)
+    .setValue(.5)
     ; 
      
     //HARMONICS 0
@@ -81,7 +75,7 @@
     .setValue(0)
     .setMultiplier(0.01)
     .setSize(20,20)
-    .setPosition(10, 170)
+    .setPosition(col[0], row[4])
     ; 
     //HARMONICS 1
     cP5.addNumberbox("harm_1")
@@ -90,7 +84,7 @@
     .setValue(0)
     .setMultiplier(0.01)
     .setSize(20,20)
-    .setPosition(70, 170)
+    .setPosition(col[2], row[4])
     ;     
     //OCTAVE 0
     cP5.addNumberbox("oct_0")
@@ -99,7 +93,7 @@
     .setValue(.5)
     .setMultiplier(0.01)
     .setSize(20,20)
-    .setPosition(40, 170)
+    .setPosition(col[1], row[4])
     ; 
     //OCTAVE 1
     cP5.addNumberbox("oct_1")
@@ -108,124 +102,136 @@
     .setValue(.5)
     .setMultiplier(0.01)
     .setSize(20,20)
-    .setPosition(100, 170)
+    .setPosition(col[3], row[4])
     ; 
     
-    
-    
-    
-    
-    
     //AMPLITUDE ENVELOPE LABEL
-    ae = cP5.addTextlabel("amp_env")
+    cP5.addTextlabel("amp_env")
     .setText("AMP")
-    .setPosition(151, 37)
+    .setPosition(col[5]+11, row[1]-8)
     ;
-    ng = cP5.addTextlabel("noise_label")
+    //NOISE LABEL
+    cP5.addTextlabel("noise_label")
     .setText("NOISE")
-    .setPosition(150,155)
+    .setPosition(col[5]+10,row[4]-15)
+    ;
+    //NOISE GAIN LABEL
+    cP5.addTextlabel("noi_gain_label")
+    .setText("GAIN")
+    .setPosition(col[5]+12,row[5]-5)
+    ;
+    //KEYBO TRACK LABEL
+    cP5.addTextlabel("track_label")
+    .setText("TRACKING")
+    .setPosition(col[7],row[5]-5)
+    ;
+    //FILTER ENV AMT LABEL
+    cP5.addTextlabel("filt_env_label")
+    .setText("AMT")
+    .setPosition(col[9]+10,row[0]+2)
     ;
     //FILTER CUTOFF 
     cP5.addSlider("cutoff")
     .setLabel("cut")
     .setSize(20,100)
     .setRange(0,1)
-    .setPosition(230,50)
+    .setPosition(col[7],row[2])
+    .setValue(1)
     ;
     //FILTER RESONANCE  
     cP5.addSlider("q")
     .setSize(20,100)
     .setRange(0,1)
-    .setPosition(260,50)
+    .setPosition(col[8],row[2])
     ;
     //FILTER AMOUNT
     cP5.addSlider("filt_env_amt")
-    .setLabel("amt")
+    .setLabel("")
     .setSize(50,20)
     .setRange(0,1)
-    .setPosition(320,25)
+    .setPosition(col[9],row[1]-20)
     ;
     //FILTER ATTACK
     cP5.addSlider("filt_atk")
     .setLabel("atk")
     .setSize(20,100)
     .setRange(0, 1)
-    .setPosition(320,50)
+    .setPosition(col[9],row[2])
     ;
     //FILTER DECAY  
     cP5.addSlider("filt_dec")
     .setLabel("dec")
     .setSize(20,100)
     .setRange(0,1)
-    .setPosition(350,50)
+    .setPosition(col[10],row[2])
     ;
     //FILTER KEYBOARD TRACKING  
     cP5.addSlider("keybo_track")
-    .setLabel("trk")
-    .setSize(20,100)
+    .setLabel("")
+    .setSize(50,20)
     .setRange(0,1)
-    .setPosition(290,50)
+    .setPosition(col[7],row[4])
     ;
     //PORTOMENTO
     cP5.addSlider("porto")
     .setRange(0,1)
     .setSize(20,100)
-    .setPosition(520,50)
+    .setPosition(col[11],row[2])
     ;
     //MASTER GAIN
     cP5.addSlider("mst_gain")
     .setRange(0,1)
     .setValue(0.7)
     .setSize(20,100)
-    .setPosition(560, 50)
+    .setPosition(col[12], row[2])
     ;
     //NOISE GAIN
     cP5.addSlider("noi_gain")
-    .setLabel("gain")
+    .setLabel("")
     .setRange(0,1)
     .setSize(50,20)
-    .setPosition(140, 170)
+    .setPosition(col[5], row[4])
     ; 
     //AMPLITUDE ATTACK
     cP5.addSlider("amp_atk")
     .setLabel(" atk")
     .setSize(20,42)
     .setRange(0,1)
-    .setPosition(140,50)
+    .setPosition(col[5],row[2])
     ;
     //AMPLITUDE DECAY
     cP5.addSlider("amp_dec")
     .setLabel("  dec")
     .setSize(20,42)
     .setRange(0,1)
-    .setPosition(170,50)
+    .setPosition(col[6],row[2])
     ;
     //NOISE ATTACK
     cP5.addSlider("noi_atk")
     .setLabel("")
     .setSize(20,41)
     .setRange(0,1)
-    .setPosition(140,109)
+    .setPosition(col[5],row[3])
     ;
     //NOISE DECAY
     cP5.addSlider("noi_dec")
     .setLabel("")
     .setSize(20,41)
     .setRange(0,1)
-    .setPosition(170,109)
+    .setPosition(col[6],row[3])
     ;
     
-    //NOISE DECAY
+    //WAVESHAPE MIX
     cP5.addSlider("ws_mix")
     .setLabel("mix")
     .setSize(20,100)
     .setRange(0, 1)
-    .setPosition(10,220)
+    .setPosition(col[4],row[2])
     ;
     //------------------DROP DOWNS------------------\\
     //WAVEFORM SELECTOR 0
     wf0 = cP5.addDropdownList("wave_0")
-    .setPosition(10, 45)
+    .setPosition(col[0], row[1])
     .setWidth(50);
     wf0.addItem("square", 0);
     wf0.addItem("saw", 1);  
@@ -233,7 +239,7 @@
     wf0.addItem("tri", 3);  
     //WAVEFORM SELECTOR 1 
     wf1 = cP5.addDropdownList("wave_1")
-    .setPosition(70, 45)
+    .setPosition(col[2], row[1])
     .setWidth(50);
     wf1.addItem("square", 0);
     wf1.addItem("saw", 1);
@@ -241,9 +247,9 @@
     wf1.addItem("tri", 3);
     //WAVESHAPE SELECT
     ws = cP5.addDropdownList("ws_sel")
-    .setLabel("shape")
-    .setPosition(40,250)
-    .setWidth(50);
+    .setLabel("shp")
+    .setPosition(col[4],row[1])
+    .setWidth(30);
     ws.addItem("sqr", 0);
     ws.addItem("saw", 1);
     ws.addItem("sin", 2);
@@ -251,7 +257,7 @@
     //FILTER TYPE SELECTOR
     fs = cP5.addDropdownList("filt_sel")
     .setLabel("filter")
-    .setPosition(230, 45)
+    .setPosition(col[7], row[1])
     .setWidth(50);
     fs.addItem("lp", 0);
     fs.addItem("hp", 1);
