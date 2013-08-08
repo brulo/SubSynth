@@ -597,4 +597,15 @@ public class SubSynth{
             }
         }
     }
+    
+    fun void volumeLoop(){
+        float l;
+        while(20::ms => now){
+            <<<"\n\n\n\n\n\n\n\n\n\n\n\n\n\n">>>;
+            <<<"current:", Math.fabs(mstBus.last())>>>;
+            if(mstBus.last() > l) mstBus.last() => l;
+            <<<"peak:", l>>>;
+        }
+    }
+    
 }
