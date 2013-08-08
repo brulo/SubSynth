@@ -111,7 +111,6 @@
     cP5.addSlider("ws_mix")
     .setLabel("mix")
     .setSize(20,100)
-    .setRange(0, 1)
     .setRange(0,1)
     .setPosition(col[4],row[2])
     ;       
@@ -423,7 +422,6 @@
       OscMessage myMessage = new OscMessage("/aatk");
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
-      cP5.getController("amp_atk").setValueLabel(str(int(sq(val) * 749 + 1)));
       cP5.getController("amp_atk").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }  
   
@@ -431,7 +429,6 @@
       OscMessage myMessage = new OscMessage("/adec");
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
-      cP5.getController("amp_dec").setValueLabel(str(int(sq(val) * 794 + 1)));
       cP5.getController("amp_dec").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }    
   
@@ -439,7 +436,6 @@
       OscMessage myMessage = new OscMessage("/natk");
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
-      cP5.getController("noi_atk").setValueLabel(str(int(sq(val) * 749 + 1)));
       cP5.getController("noi_atk").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }  
   
@@ -447,7 +443,6 @@
       OscMessage myMessage = new OscMessage("/ndec");
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
-      cP5.getController("noi_dec").setValueLabel(str(int(sq(val) * 749 + 1)));
       cP5.getController("noi_dec").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }  
   
@@ -475,7 +470,6 @@
       OscMessage myMessage = new OscMessage("/fatk");
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
-      cP5.getController("filt_atk").setValueLabel(str(int(sq(val) * 749 + 1)));
       cP5.getController("filt_atk").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }  
   
@@ -483,7 +477,6 @@
       OscMessage myMessage = new OscMessage("/fdec");
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
-      cP5.getController("filt_dec").setValueLabel(str(int(sq(val) * 749 + 1)));
       cP5.getController("filt_dec").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }
   
