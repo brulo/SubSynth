@@ -44,8 +44,7 @@ public class SubSynth{
     //Variables
     int cFilt, cWShaper;
     int cWForm[2]; 
-    float cPitch, reso, cut, track, fEnvAmt, portoAmt, oMix, wsMix;
-    float foldIndex, foldThresh;
+    float cPitch, cut, track, fEnvAmt, portoAmt, oMix, wsMix;
     int oct[2]; int coarse[2]; float fine[2]; 
     OscRecv orec;
     
@@ -237,12 +236,13 @@ public class SubSynth{
         return cut;
     }
     
-    fun float resonance(){ return reso; }
+    fun float resonance(){ return filts[0].Q(); }
     fun float resonance(float r){
         sanityCheck(r)*11 + 1 => r;
         for(int i; i<filts.cap(); i++){
             r => filts[i].Q;
         }
+        return filts[0].Q();
     }
     
     fun float filtEnvAmt() { return fEnvAmt; }
@@ -277,16 +277,16 @@ public class SubSynth{
         return portoAmt;
     }
     
-    fun float foldbackThresh() { return foldThresh; }
+    fun float foldbackThresh() { return fold.thresh; }
     fun float foldbackThresh(float t){
-        sanityCheck(t) + .01 => foldThresh => fold.thresh;
-        return foldThresh;
+        sanityCheck(t) + .01 => fold.thresh;
+        return fold.thresh;
     }   
     
-    fun float foldbackIndex() { return foldIndex; }
+    fun float foldbackIndex() { return fold.index; }
     fun float foldbackIndex(float ind){
-        sanityCheck(ind)*4 + 0.6 => foldIndex => fold.index;
-        return foldIndex;
+        sanityCheck(ind)*4 + 0.6 => fold.index;
+        return fold.index;
     }
     
     fun float pan(){ return mstBus.pan(); }
