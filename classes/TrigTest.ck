@@ -4,6 +4,7 @@ public class TrigTest{
     1.0 => gate.f;
     float t;
     .7 => t;
+    .2 => t;
     spork ~ play();
     
     //Functions
