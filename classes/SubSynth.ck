@@ -35,6 +35,7 @@ public class SubSynth{
     HPF hp @=> filts[1];  
     ResonZ rez @=> filts[2];
     //KasFilter kf; //3
+    //Limiters
     Dyno limit1, limit2;
     
     //Objects
@@ -59,7 +60,7 @@ public class SubSynth{
         }
         
         for(int i; i<ws.cap(); i++) preWs => ws[i]; 
-                                                   //shapers to postWs handled by waveshape()
+        //shapers to postWs handled by waveshape()
         postWs => ampEnv; paraWs => ampEnv;
         
         ampEnv => preFilt;    
@@ -262,6 +263,7 @@ public class SubSynth{
         calcEnvTime(sanityCheck(d)) => filtEnv.decayTime;
         return filtEnv.decayTime();
     }
+    
     fun float keyboTrack() { return track; }
     fun float keyboTrack(float k){
         sanityCheck(k) => track;
