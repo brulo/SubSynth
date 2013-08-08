@@ -332,6 +332,7 @@ public class SubSynth{
     
     fun dur calcEnvTime(float l){
         return Math.pow(l,2)*749::ms + 1::ms;
+        return Math.pow(l,2)*4999.99::ms + 0.01::ms;
     }
     
     
