@@ -92,6 +92,7 @@ public class SubSynth{
         oscMix(0);
         cutoff(1);
         .3 => postFilt.gain;
+        .5 => postFilt.gain;
         limit1.limit();
         limit2.limit();
         
