@@ -321,6 +321,18 @@ public class SubSynth{
         //<<<cPitch>>>;
     }
     
+    fun void keyOn(){
+        ampEnv.keyOn();
+        filtEnv.keyOn();
+        noiEnv.keyOn();
+    }
+    
+    fun void keyOff(){
+        filtEnv.keyOff();
+        ampEnv.keyOff();
+        noiEnv.keyOff();
+    }
+    
     //Utility Functions
     fun void crossfade(UGen one, UGen two, float m){
         sanityCheck(m) => m;
