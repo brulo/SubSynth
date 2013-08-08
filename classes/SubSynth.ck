@@ -275,6 +275,7 @@ public class SubSynth{
     fun float portomento(float p){
         sanityCheck(p) => portoAmt;
         Math.pow(1 - portoAmt, 2) * 150 + 1 => p;
+        Math.pow(1 - portoAmt, 2)*150 + 5 => p;
         for(int i; i<2; i++) p => porto[i].freq;
         return portoAmt;
     }
