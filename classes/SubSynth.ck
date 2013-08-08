@@ -38,11 +38,13 @@ public class SubSynth{
     
     //Objects
     DLP porto[2];
+    Foldback fold;
     
     //Variables
     int cFilt, cWShaper;
     int cWForm[2]; 
     float cPitch, reso, cut, track, fEnvAmt, portoAmt, oMix, wsMix;
+    float foldIndex, foldThresh;
     int oct[2]; int coarse[2]; float fine[2]; 
     OscRecv orec;
     
@@ -67,7 +69,7 @@ public class SubSynth{
             preFilt => filts[i];    
         }                        //filts to postfil handled by filerType()
         
-        postFilt => mstBus => dac;
+        postFilt => fold => mstBus => dac;
         
         filtEnv => blackhole;
         
@@ -87,6 +89,7 @@ public class SubSynth{
         waveshaperMix(0);
         oscMix(0);
         cutoff(1);
+        .3 => postFilt.gain;
         
         //------------------------------Sporks------------------------------\\
         //OSC
@@ -99,10 +102,12 @@ public class SubSynth{
         spork ~ waveshaperOSC(); spork ~ waveshaperMixOSC(); //waveshaping
         spork ~ ampAtkOSC();     spork ~ ampDecOSC(); //amp env
         spork ~ noiGainOSC();    spork ~ noiAtkOSC();   spork ~ noiDecOSC(); //noise
-        spork ~ filtTypeOSC();   spork ~ cutoffOSC();  spork ~resonanceOSC(); //filter
+        spork ~ filtTypeOSC();   spork ~ cutoffOSC();   spork ~resonanceOSC(); //filter
         spork ~ filtEnvAmtOSC(); spork ~ filtAtkOSC();  spork ~ filtDecOSC(); //filter env
         spork ~ keyboTrackOSC();
         spork ~ portomentoOSC();
+        spork ~ foldbackThreshOSC(); spork ~ foldbackIndexOSC();
+        spork ~ panOSC();
         spork ~ mstGainOSC();            
         
         //Other
@@ -111,7 +116,7 @@ public class SubSynth{
     }
     
     //----------------------------FUNCTIONS-------------------------
-    //Setters and Getters       
+    //Setters and Getters   
     //Oscillators
     fun int waveform(int os) { return cWForm[os]; }
     fun int waveform(int os, int wv){
@@ -267,12 +272,28 @@ public class SubSynth{
         return portoAmt;
     }
     
+    fun float foldbackThresh() { return foldThresh; }
+    fun float foldbackThresh(float t){
+        sanityCheck(t) => foldThresh => fold.thresh;
+        return foldThresh;
+    }   
+    
+    fun float foldbackIndex() { return foldIndex; }
+    fun float foldbackIndex(float ind){
+        sanityCheck(ind)*4 + 0.5 => foldIndex => fold.index;
+        return foldIndex;
+    }
+    
+    fun float pan(){ return mstBus.pan(); }
+    fun float pan(float p){
+        sanityCheck(p)*2 - 1 => mstBus.pan;
+    }
+    
     fun float mstGain() { return mstBus.gain(); }
     fun float mstGain(float g){
-        if(g<0) 0 => mstBus.gain;
-        else if(g>1) 1 => mstBus.gain;
-        else g => mstBus.gain;
-    }  
+        sanityCheck(g) => mstBus.gain;
+        return mstBus.gain();
+    }
     
     //Synth Triggers
     fun void pitchIt(float p){
@@ -333,7 +354,6 @@ public class SubSynth{
     
     fun void coarseTuneOSC(){ //i = osc, f = coarse pitch
         orec.event("/cors, i, f") @=> OscEvent ev;
-        int i;
         while(ev=>now){
             while(ev.nextMsg() != 0){
                 coarseTune(ev.getInt(), ev.getFloat());
@@ -502,10 +522,36 @@ public class SubSynth{
     //End Stage
     fun void portomentoOSC(){
         orec.event("/porto, f") @=> OscEvent ev;
-        float f;
         while(ev=>now){
             while(ev.nextMsg() != 0){
                 portomento(ev.getFloat());
+            }
+        }
+    }
+    
+    fun void foldbackThreshOSC(){
+        orec.event("/fbt, f") @=> OscEvent ev;
+        while(ev=>now){ 
+            while(ev.nextMsg() != 0){
+                foldbackThresh(ev.getFloat());
+            }
+        }
+    }    
+    
+    fun void foldbackIndexOSC(){
+        orec.event("/fbi, f") @=> OscEvent ev;
+        while(ev=>now){ 
+            while(ev.nextMsg() != 0){
+                foldbackIndex(ev.getFloat());
+            }
+        }
+    }
+    
+    fun void panOSC(){
+        orec.event("/pan, f") @=> OscEvent ev;
+        while(ev=>now){ 
+            while(ev.nextMsg() != 0){
+                pan(ev.getFloat());
             }
         }
     }
