@@ -95,6 +95,8 @@ public class SubSynth{
         .5 => postFilt.gain;
         limit1.limit();
         limit2.limit();
+        1 => fold.thresh;
+        .6 => fold.index;
         
         //------------------------------Sporks------------------------------\\
         //OSC
