@@ -35,6 +35,7 @@ public class SubSynth{
     HPF hp @=> filts[1];  
     ResonZ rez @=> filts[2];
     //KasFilter kf; //3
+    Dyno limit1, limit2;
     
     //Objects
     DLP porto[2];
@@ -70,6 +71,7 @@ public class SubSynth{
         }                        //filts to postfil handled by filerType()
         
         postFilt => fold => mstBus => dac;
+        postFilt => limit1 => fold => mstBus => limit2 => dac;
         
         filtEnv => blackhole;
         
@@ -90,6 +92,8 @@ public class SubSynth{
         oscMix(0);
         cutoff(1);
         .3 => postFilt.gain;
+        limit1.limit();
+        limit2.limit();
         
         //------------------------------Sporks------------------------------\\
         //OSC
