@@ -13,6 +13,8 @@
               // 0,  1,  2,   3,  
   int[] col = { 10, 40, 70, 100, 150, 200, 230, 280, 310, 340, 370, 420, 450, 500 };
   int[] row = { 10, 45, 50, 109, 170, 200 };
+  float envMin=0.01; 
+  float envLen=4999.99;
   
   void setup(){
     size(550,210);
@@ -421,6 +423,7 @@
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
       cP5.getController("amp_atk").setValueLabel(str(int(sq(val) * 749 + 1)));
+      cP5.getController("amp_atk").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }  
   
   void amp_dec(float val){
@@ -428,6 +431,7 @@
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
       cP5.getController("amp_dec").setValueLabel(str(int(sq(val) * 794 + 1)));
+      cP5.getController("amp_dec").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }    
   
   void noi_atk(float val){
@@ -435,6 +439,7 @@
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
       cP5.getController("noi_atk").setValueLabel(str(int(sq(val) * 749 + 1)));
+      cP5.getController("noi_atk").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }  
   
   void noi_dec(float val){
@@ -442,6 +447,7 @@
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
       cP5.getController("noi_dec").setValueLabel(str(int(sq(val) * 749 + 1)));
+      cP5.getController("noi_dec").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }  
   
   void noi_gain(float val){
@@ -469,6 +475,7 @@
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
       cP5.getController("filt_atk").setValueLabel(str(int(sq(val) * 749 + 1)));
+      cP5.getController("filt_atk").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }  
   
   void filt_dec(float val){
@@ -476,6 +483,7 @@
       myMessage.add(val);
       oscP5.send(myMessage, myRemoteLocation);
       cP5.getController("filt_dec").setValueLabel(str(int(sq(val) * 749 + 1)));
+      cP5.getController("filt_dec").setValueLabel(str(int(sq(val) * envLen + envMin)));
   }
   
   void filt_env_amt(float val){
