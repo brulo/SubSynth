@@ -283,6 +283,7 @@ public class SubSynth{
     fun float foldbackThresh() { return foldThresh; }
     fun float foldbackThresh(float t){
         sanityCheck(t) => foldThresh => fold.thresh;
+        sanityCheck(t) + .01 => foldThresh => fold.thresh;
         return foldThresh;
     }   
     
