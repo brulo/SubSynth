@@ -290,6 +290,7 @@ public class SubSynth{
     fun float foldbackIndex() { return foldIndex; }
     fun float foldbackIndex(float ind){
         sanityCheck(ind)*4 + 0.5 => foldIndex => fold.index;
+        sanityCheck(ind)*4 + 0.6 => foldIndex => fold.index;
         return foldIndex;
     }
     
