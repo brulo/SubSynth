@@ -70,7 +70,6 @@ public class SubSynth{
             preFilt => filts[i];    
         }                        //filts to postfil handled by filerType()
         
-        postFilt => fold => mstBus => dac;
         postFilt => limit1 => fold => mstBus => limit2 => dac;
         
         filtEnv => blackhole;
@@ -91,7 +90,6 @@ public class SubSynth{
         waveshaperMix(0);
         oscMix(0);
         cutoff(1);
-        .3 => postFilt.gain;
         .5 => postFilt.gain;
         limit1.limit();
         limit2.limit();
@@ -274,7 +272,6 @@ public class SubSynth{
     fun float portomento(){ return portoAmt; }
     fun float portomento(float p){
         sanityCheck(p) => portoAmt;
-        Math.pow(1 - portoAmt, 2) * 150 + 1 => p;
         Math.pow(1 - portoAmt, 2)*150 + 5 => p;
         for(int i; i<2; i++) p => porto[i].freq;
         return portoAmt;
@@ -282,14 +279,12 @@ public class SubSynth{
     
     fun float foldbackThresh() { return foldThresh; }
     fun float foldbackThresh(float t){
-        sanityCheck(t) => foldThresh => fold.thresh;
         sanityCheck(t) + .01 => foldThresh => fold.thresh;
         return foldThresh;
     }   
     
     fun float foldbackIndex() { return foldIndex; }
     fun float foldbackIndex(float ind){
-        sanityCheck(ind)*4 + 0.5 => foldIndex => fold.index;
         sanityCheck(ind)*4 + 0.6 => foldIndex => fold.index;
         return foldIndex;
     }
@@ -332,7 +327,6 @@ public class SubSynth{
     }
     
     fun dur calcEnvTime(float l){
-        return Math.pow(l,2)*749::ms + 1::ms;
         return Math.pow(l,2)*4999.99::ms + 0.01::ms;
     }
     
