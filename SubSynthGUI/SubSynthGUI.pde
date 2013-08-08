@@ -10,7 +10,7 @@
   DropdownList wf0, wf1; //waveform selector
   DropdownList fs; //filter selector
   DropdownList ws; //wave shape sel
-              // 0,  1,  2,   3,  
+              // 0,  1,  2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13 
   int[] col = { 10, 40, 70, 100, 150, 200, 230, 280, 310, 340, 370, 420, 450, 500 };
   int[] row = { 10, 45, 50, 109, 170, 200 };
   float envMin=0.01; 
