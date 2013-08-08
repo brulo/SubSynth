@@ -112,6 +112,7 @@
     .setLabel("mix")
     .setSize(20,100)
     .setRange(0, 1)
+    .setRange(0,1)
     .setPosition(col[4],row[2])
     ;       
     //PORTOMENTO
