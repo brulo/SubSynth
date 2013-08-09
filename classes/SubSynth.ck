@@ -96,26 +96,12 @@ public class SubSynth{
         1 => fold.thresh;
         .6 => fold.index;
         
-        //------------------------------Sporks------------------------------\\
         //OSC
         12001 => orec.port;
         orec.listen();
-        spork ~ waveformOSC();
-        spork ~ oscMixOSC();
-        spork ~ coarseTuneOSC(); spork ~ fineTuneOSC(); spork ~ octaveTuneOSC(); //tuning
-        spork ~ harmonicsOSC();
-        spork ~ waveshaperOSC(); spork ~ waveshaperMixOSC(); //waveshaping
-        spork ~ ampAtkOSC();     spork ~ ampDecOSC(); //amp env
-        spork ~ noiGainOSC();    spork ~ noiAtkOSC();   spork ~ noiDecOSC(); //noise
-        spork ~ filtTypeOSC();   spork ~ cutoffOSC();   spork ~resonanceOSC(); //filter
-        spork ~ filtEnvAmtOSC(); spork ~ filtAtkOSC();  spork ~ filtDecOSC(); //filter env
-        spork ~ keyboTrackOSC();
-        spork ~ portomentoOSC();
-        spork ~ foldbackThreshOSC(); spork ~ foldbackIndexOSC();
-        spork ~ panOSC();
-        spork ~ mstGainOSC();            
+        initOSC(); //sporks all OSC loops  
         
-        //Other
+        //Sporks
         spork ~ filtEnvLoop(); 
         spork ~ portoLoop();
     }
@@ -583,6 +569,23 @@ public class SubSynth{
             }
         }
     }
+    
+    fun void initOSC(){
+        spork ~ waveformOSC();
+        spork ~ oscMixOSC();
+        spork ~ coarseTuneOSC(); spork ~ fineTuneOSC(); spork ~ octaveTuneOSC(); //tuning
+        spork ~ harmonicsOSC();
+        spork ~ waveshaperOSC(); spork ~ waveshaperMixOSC(); //waveshaping
+        spork ~ ampAtkOSC();     spork ~ ampDecOSC(); //amp env
+        spork ~ noiGainOSC();    spork ~ noiAtkOSC();   spork ~ noiDecOSC(); //noise
+        spork ~ filtTypeOSC();   spork ~ cutoffOSC();   spork ~resonanceOSC(); //filter
+        spork ~ filtEnvAmtOSC(); spork ~ filtAtkOSC();  spork ~ filtDecOSC(); //filter env
+        spork ~ keyboTrackOSC();
+        spork ~ portomentoOSC();
+        spork ~ foldbackThreshOSC(); spork ~ foldbackIndexOSC();
+        spork ~ panOSC();
+        spork ~ mstGainOSC(); 
+    }  
     
     //-------------------------Other Loops-------------------------
     fun void filtEnvLoop(){
