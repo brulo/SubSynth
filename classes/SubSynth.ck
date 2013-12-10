@@ -319,24 +319,6 @@ public class SubSynth{
         noiEnv.keyOff();
     }
     
-    //Utility Functions
-    fun void crossfade(UGen one, UGen two, float m){
-        sanityCheck(m) => m;
-        Math.cos(m*pi)*0.5 + 0.5 => one.gain;
-        Math.cos((m+1)*pi)*0.5 + 0.5 => two.gain;
-    }
-    
-    fun dur calcEnvTime(float l){
-        return Math.pow(l,2)*4999.99::ms + 0.01::ms;
-    }
-    
-    
-    fun float sanityCheck(float f){
-        if(f<0) return 0.0;
-        else if(f>1) return 1.0;
-        else return f;
-    }
-    
     //------------------------------OSC Loops--------------------------------\\
     //Oscillators    
     fun void waveformOSC(){
@@ -617,6 +599,23 @@ public class SubSynth{
             if(mstBus.last() > l) mstBus.last() => l;
             <<<"peak:", l>>>;
         }
+    }
+    
+    //Utility Functions
+    fun void crossfade(UGen one, UGen two, float m){
+        sanityCheck(m) => m;
+        Math.cos(m*pi)*0.5 + 0.5 => one.gain;
+        Math.cos((m+1)*pi)*0.5 + 0.5 => two.gain;
+    }
+    
+    fun dur calcEnvTime(float l){
+        return Math.pow(l,2)*4999.99::ms + 0.01::ms;
+    }
+    
+    fun float sanityCheck(float f){
+        if(f<0) return 0.0;
+        else if(f>1) return 1.0;
+        else return f;
     }
     
 }

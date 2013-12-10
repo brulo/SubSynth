@@ -1,6 +1,6 @@
-Machine.add("../chuckStuff/classes/DataEvent.ck");
-Machine.add("../chuckStuff/classes/DLP.ck");
-Machine.add("../chuckStuff/classes/Chugens/Foldback.ck");
-Machine.add("classes/SubSynth.ck");
-Machine.add("classes/trigTest.ck");
-Machine.add("synth_runner.ck");
+Machine.add(me.dir(-1)+"/chuckStuff/classes/DataEvent.ck");
+Machine.add(me.dir(-1)+"/chuckStuff/classes/DLP.ck");
+Machine.add(me.dir(-1)+"/chuckStuff/classes/Chugens/Foldback.ck");
+Machine.add(me.dir()+"/classes/SubSynth.ck");
+Machine.add(me.dir()+"/classes/trigTest.ck");
+Machine.add(me.dir()+"/synth_runner.ck");
