@@ -5,15 +5,23 @@ SubSynth syn;
 syn.init();
 
 spork ~ pitchLoop();
-spork ~ gateLoop();
+spork ~ gateOnLoop();
+spork ~ gateOffLoop();
 
 while(samp=>now);
 
 //Functions
 fun void pitchLoop(){
-    while(trig.pitch => now) syn.pitchIt(trig.pitch.f);
+    while(trig.pitch => now){
+        syn.pitchIt(trig.pitch.f);
+        <<<trig.pitch.f>>>;
+    }
 }
 
-fun void gateLoop(){
-    while(trig.gate => now) syn.trigIt();
+fun void gateOnLoop(){
+    while(trig.gateOn => now) syn.gateOn();
+}
+
+fun void gateOffLoop(){
+    while(trig.gateOff => now) syn.gateOff();
 }

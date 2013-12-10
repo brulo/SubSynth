@@ -34,6 +34,7 @@ public class SubSynth{
     LPF lp @=> filts[0];  
     HPF hp @=> filts[1];  
     ResonZ rez @=> filts[2];
+    CVADiodeLadderFilter diode; 
     //KasFilter kf; //3
     //Limiters
     Dyno limit1, limit2;
@@ -43,7 +44,7 @@ public class SubSynth{
     Foldback fold;
     
     //Variables
-    int cFilt, cWShaper;
+    int cFilt, nFilts, cWShaper, gated;
     int cWForm[2]; 
     float cPitch, cut, track, fEnvAmt, portoAmt, oMix, wsMix;
     int oct[2]; int coarse[2]; float fine[2]; 
@@ -51,6 +52,8 @@ public class SubSynth{
     
     //--------------------------------Initializer--------------------------------\\
     fun void init(){
+        diode.init();
+        1 => diode.gain;
         //Signal Routing
         for(int i; i<2; i++){
             sqr[i] => mix[i];   saw[i] => mix[i];  //waveforms to mixer
@@ -66,9 +69,13 @@ public class SubSynth{
         ampEnv => preFilt;    
         noi => noiEnv => preFilt; //noise skips ampEnv (has its own)
         
+        filts.cap()+1 => nFilts;
+        
         for(int i; i<filts.cap(); i++){
             preFilt => filts[i];    
-        }                        //filts to postfil handled by filerType()
+        }      
+        //filts to postfil handled by filerType()
+        preFilt => diode;
         
         postFilt => limit1 => fold => mstBus => limit2 => dac;
         
@@ -78,12 +85,13 @@ public class SubSynth{
         for(int i; i<2 ; i++){ 
             waveform(i,0);
             porto[i].go(); //.init?
-            200 => porto[i].freq;
+            20 => porto[i].freq;
+            //1 => porto[i].q;
         }
         for(int i; i<ws.cap(); i++) ws[i].sync(1);
-        ampEnv.set  (20::ms,200::ms,0,0::ms);
-        filtEnv.set (20::ms,200::ms,0,0::ms);
-        noiEnv.set  (20::ms,200::ms,0,0::ms);
+        ampEnv.set  (20::ms,0::ms,1,0::ms);
+        filtEnv.set (20::ms,0::ms,1,0::ms);
+        noiEnv.set  (20::ms,0::ms,1,0::ms);
         waveshaper(0);
         filtType(0);
         noi.gain(0);
@@ -182,10 +190,10 @@ public class SubSynth{
         return ampEnv.attackTime();
     }
     
-    fun dur ampDec() { return ampEnv.decayTime(); }
+    fun dur ampDec() { return ampEnv.releaseTime(); }
     fun dur ampDec(float d){
-        calcEnvTime(sanityCheck(d)) => ampEnv.decayTime;
-        return ampEnv.decayTime();
+        calcEnvTime(sanityCheck(d)) => ampEnv.releaseTime;
+        return ampEnv.releaseTime();
     }    
     
     //Noise Section
@@ -202,34 +210,51 @@ public class SubSynth{
     
     fun dur noiDec() { return noiEnv.decayTime(); }
     fun dur noiDec(float d){
-        calcEnvTime(sanityCheck(d)) => noiEnv.decayTime;
-        return noiEnv.decayTime();
+        calcEnvTime(sanityCheck(d)) => noiEnv.releaseTime;
+        return noiEnv.releaseTime();
     }
     
     //Filter    
     fun int filtType() { return cFilt; }
     fun int filtType(int fs){
-        if(fs>=0 & fs<filts.cap()){
-            for(int i; i<filts.cap(); i++) filts[i] =< postFilt;
-            filts[fs] => postFilt;
+        if(fs>=0 & fs<nFilts){
+            diode =< postFilt;  //disconnect all filts
+            for(int i; i<filts.cap(); i++){ 
+                filts[i] =< postFilt;
+            }
             fs => cFilt;
+            if(fs<filts.cap()){
+                filts[fs] => postFilt;
+            }
+            else if(fs==3){ 
+                diode => postFilt;
+                //<<<"diode selected">>>;
+            }
+            return cFilt;
         }
-        return cFilt;
     }
     
     fun float cutoff(){ return cut; }
     fun float cutoff(float c){
-        Math.pow(sanityCheck(c),2)*19980 + 20 => cut;
-        return cut;
+        if(cFilt<nFilts){
+            Math.pow(sanityCheck(c),2)*13000 + 20 => cut;
+        }
     }
     
     fun float resonance(){ return filts[0].Q(); }
     fun float resonance(float r){
-        sanityCheck(r)*11 + 1 => r;
-        for(int i; i<filts.cap(); i++){
-            r => filts[i].Q;
+        if(cFilt<3){
+            sanityCheck(r)*11 + 1 => r;
+            for(int i; i<filts.cap(); i++){
+                r => filts[i].Q;
+            }
+            return filts[0].Q();
         }
-        return filts[0].Q();
+        else if(cFilt==3){
+            sanityCheck(r)*17 => r;
+            diode.q(r);
+            return diode.q();
+        }
     }
     
     fun float filtEnvAmt() { return fEnvAmt; }
@@ -246,8 +271,8 @@ public class SubSynth{
     
     fun dur filtDec() { return filtEnv.decayTime(); }
     fun dur filtDec(float d){
-        calcEnvTime(sanityCheck(d)) => filtEnv.decayTime;
-        return filtEnv.decayTime();
+        calcEnvTime(sanityCheck(d)) => filtEnv.releaseTime;
+        return filtEnv.releaseTime();
     }
     
     fun float keyboTrack() { return track; }
@@ -296,15 +321,19 @@ public class SubSynth{
         }
     }
     
-    fun void trigIt(){
-        filtEnv.keyOff();
-        ampEnv.keyOff();
-        noiEnv.keyOff();
-        
+    fun void gateOn(){
         ampEnv.keyOn();
         filtEnv.keyOn();
         noiEnv.keyOn();
+        1 => gated;
         //<<<cPitch>>>;
+    }
+    
+    fun void gateOff(){
+        filtEnv.keyOff();
+        ampEnv.keyOff();
+        noiEnv.keyOff();
+        0 => gated;
     }
     
     fun void keyOn(){
@@ -576,6 +605,7 @@ public class SubSynth{
             Std.mtof(filtEnv.value() * (fEnvAmt*100) + Std.ftom(cut)+(track*cPitch)) => f;
             if(f>20000) 20000=>f;
             for(int i; i<filts.cap(); i++) f => filts[i].freq;
+            diode.cutoff(f);
         }
     }
     
