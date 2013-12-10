@@ -1,4 +1,4 @@
-  //LIBS
+    //LIBS
   import controlP5.*;
   import oscP5.*;
   import netP5.*;
@@ -314,6 +314,7 @@
     fs.addItem("lp", 0);
     fs.addItem("hp", 1);
     fs.addItem("rez", 2);
+    fs.addItem("dio", 3);
     //fs.addItem("kf", 3);
     
     //----------------------------OSC------------------------\\
