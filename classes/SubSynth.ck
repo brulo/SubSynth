@@ -12,6 +12,7 @@
 //
 //By Bruce Lott & Mark Morris
 //July/August 2013
+//Added diode filter and changed trig to gate in Dec 2013
 
 public class SubSynth{
     //----------------Ugens----------------\\
@@ -25,7 +26,7 @@ public class SubSynth{
     SinOsc sinWs @=> ws[2];  TriOsc triWs @=> ws[3];
     //Busses
     Gain mix[2];
-    Gain preWs, paraWs, postWs, preFilt, postFilt;
+    Gain preWs, paraWs, postWs, preFilt, postFilt, dioBus;
     Pan2 mstBus;
     //Envelopes
     ADSR ampEnv, filtEnv, noiEnv;
@@ -37,7 +38,7 @@ public class SubSynth{
     CVADiodeLadderFilter diode; 
     //KasFilter kf; //3
     //Limiters
-    Dyno limit1, limit2;
+    Dyno limit1, limit2, dioLim;
     
     //Objects
     DLP porto[2];
@@ -54,6 +55,7 @@ public class SubSynth{
     fun void init(){
         diode.init();
         1 => diode.gain;
+        4 => dioBus.gain;
         //Signal Routing
         for(int i; i<2; i++){
             sqr[i] => mix[i];   saw[i] => mix[i];  //waveforms to mixer
@@ -75,7 +77,9 @@ public class SubSynth{
             preFilt => filts[i];    
         }      
         //filts to postfil handled by filerType()
-        preFilt => diode;
+        preFilt => diode => dioLim => dioBus;
+        dioLim.limit();
+        .3 => dioLim.thresh;
         
         postFilt => limit1 => fold => mstBus => limit2 => dac;
         
@@ -218,7 +222,7 @@ public class SubSynth{
     fun int filtType() { return cFilt; }
     fun int filtType(int fs){
         if(fs>=0 & fs<nFilts){
-            diode =< postFilt;  //disconnect all filts
+            dioBus =< postFilt;  //disconnect all filts
             for(int i; i<filts.cap(); i++){ 
                 filts[i] =< postFilt;
             }
@@ -227,7 +231,7 @@ public class SubSynth{
                 filts[fs] => postFilt;
             }
             else if(fs==3){ 
-                diode => postFilt;
+                dioBus => postFilt;
                 //<<<"diode selected">>>;
             }
             return cFilt;
